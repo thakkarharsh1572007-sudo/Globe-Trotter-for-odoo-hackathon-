@@ -4,7 +4,7 @@ from app.models import User
 from app import db
 from datetime import datetime
 from datetime import datetime
-from app.models import User, Trip, Stop
+from app.models import User, Trip, Stop, Activity
 from app.models import Trip
 
 # Create a Blueprint named 'auth'
@@ -176,3 +176,33 @@ def add_activity(stop_id):
         return redirect(url_for('auth.trip_view', trip_id=stop.trip_id))
 
     return render_template('add_activity.html', stop=stop)
+@auth.route('/trip/<int:trip_id>/budget')
+@login_required
+def trip_budget(trip_id):
+    trip = Trip.query.get_or_404(trip_id)
+    
+    # Security check
+    if trip.user_id != current_user.id:
+        return redirect(url_for('auth.dashboard'))
+
+    total_cost = 0
+    city_costs = {}
+    labels = []
+    values = []
+
+    # Calculate costs per stop
+    for stop in trip.stops:
+        stop_cost = sum(activity.cost for activity in stop.activities)
+        if stop_cost > 0:
+            city_costs[stop.city_name] = stop_cost
+            labels.append(stop.city_name)
+            values.append(stop_cost)
+            total_cost += stop_cost
+
+    return render_template(
+        'budget.html', 
+        trip=trip, 
+        total_cost=total_cost, 
+        labels=labels, 
+        values=values
+    )
