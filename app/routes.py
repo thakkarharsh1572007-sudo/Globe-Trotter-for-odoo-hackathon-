@@ -120,37 +120,44 @@ def trip_view(trip_id):
     return render_template('trip_view.html', trip=trip, stops=stops)
 
 
-@auth.route('/trip/<int:trip_id>/add-stop', methods=['POST'])
+@auth.route('/trip/<int:trip_id>/add_stop', methods=['POST'])
 @login_required
 def add_stop(trip_id):
     trip = Trip.query.get_or_404(trip_id)
     if trip.user_id != current_user.id:
         return redirect(url_for('auth.dashboard'))
-        
+    
     city_name = request.form.get('city_name')
-    arrival_date_str = request.form.get('arrival_date')
-    departure_date_str = request.form.get('departure_date')
+    arrival_str = request.form.get('arrival_date')
+    departure_str = request.form.get('departure_date')
     
-    # Convert HTML string dates to Python dates
-    arrival_date = datetime.strptime(arrival_date_str, '%Y-%m-%d').date()
-    departure_date = datetime.strptime(departure_date_str, '%Y-%m-%d').date()
-    
-    # Create and save the new stop
-    new_stop = Stop(
-        trip_id=trip.id,
-        city_name=city_name,
-        arrival_date=arrival_date,
-        departure_date=departure_date
-    )
-    existing_stop = Stop.query.filter(Stop.trip_id == trip.id, Stop.city_name.ilike(city_name)).first()
-    
-    if existing_stop:
-        flash(f'You already have {city_name} in your itinerary!', 'warning')
-        return redirect(url_for('auth.trip_view', trip_id=trip.id))
-    db.session.add(new_stop)
-    db.session.commit()
-    
-    flash(f'{city_name} added to your itinerary!')
+    if city_name and arrival_str and departure_str:
+        arrival_date = datetime.strptime(arrival_str, '%Y-%m-%d').date()
+        departure_date = datetime.strptime(departure_str, '%Y-%m-%d').date()
+        
+        # 1. Ensure stop dates fit within the main trip dates
+        if arrival_date < trip.start_date or departure_date > trip.end_date:
+            flash(f'Error: Stop dates must be within the trip duration ({trip.start_date.strftime("%b %d")} to {trip.end_date.strftime("%b %d")}).', 'error')
+            return redirect(url_for('auth.trip_view', trip_id=trip.id))
+        
+        # 2. Ensure arrival is not after departure
+        if arrival_date > departure_date:
+            flash('Arrival date cannot be after departure date.', 'error')
+            return redirect(url_for('auth.trip_view', trip_id=trip.id))
+            
+        # 3. 🟢 VALIDATION: Check for overlapping dates with existing stops
+        existing_stops = Stop.query.filter_by(trip_id=trip.id).all()
+        for stop in existing_stops:
+            # Overlap formula: (StartA <= EndB) and (EndA >= StartB)
+            if arrival_date <= stop.departure_date and departure_date >= stop.arrival_date:
+                flash(f'Conflict error: These dates overlap with your existing stop in {stop.city_name} ({stop.arrival_date.strftime("%b %d")} - {stop.departure_date.strftime("%b %d")}).', 'error')
+                return redirect(url_for('auth.trip_view', trip_id=trip.id))
+
+        new_stop = Stop(trip_id=trip.id, city_name=city_name, arrival_date=arrival_date, departure_date=departure_date)
+        db.session.add(new_stop)
+        db.session.commit()
+        flash(f'Added stop: {city_name}', 'success')
+        
     return redirect(url_for('auth.trip_view', trip_id=trip.id))
 @auth.route('/stop/<int:stop_id>/add-activity', methods=['GET', 'POST'])
 @login_required
