@@ -142,6 +142,11 @@ def add_stop(trip_id):
         arrival_date=arrival_date,
         departure_date=departure_date
     )
+    existing_stop = Stop.query.filter(Stop.trip_id == trip.id, Stop.city_name.ilike(city_name)).first()
+    
+    if existing_stop:
+        flash(f'You already have {city_name} in your itinerary!', 'warning')
+        return redirect(url_for('auth.trip_view', trip_id=trip.id))
     db.session.add(new_stop)
     db.session.commit()
     
@@ -232,10 +237,36 @@ def delete_stop(stop_id):
     stop = Stop.query.get_or_404(stop_id)
     trip_id = stop.trip_id
     
-    # Ensure the user owns the trip this stop belongs to
+    # Security check: Ensure the user owns the trip
     if stop.trip.user_id == current_user.id:
         db.session.delete(stop)
         db.session.commit()
-        flash(f'{stop.city_name} removed from your itinerary.', 'info')
+        flash(f'{stop.city_name} removed from itinerary.', 'info')
         
     return redirect(url_for('auth.trip_view', trip_id=trip_id))
+
+
+@auth.route('/activity/<int:activity_id>/delete', methods=['POST'])
+@login_required
+def delete_activity(activity_id):
+    activity = Activity.query.get_or_404(activity_id)
+    trip_id = activity.stop.trip_id
+    
+    # Security check: Ensure the user owns the trip this activity belongs to
+    if activity.stop.trip.user_id == current_user.id:
+        db.session.delete(activity)
+        db.session.commit()
+        flash(f'"{activity.name}" removed.', 'info')
+        
+    return redirect(url_for('auth.trip_view', trip_id=trip_id))
+@auth.route('/profile')
+@login_required
+def profile():
+    # Calculate some travel statistics for the user
+    trips = Trip.query.filter_by(user_id=current_user.id).all()
+    total_trips = len(trips)
+    
+    # Count every single stop across all their trips
+    total_cities = sum(len(trip.stops) for trip in trips)
+    
+    return render_template('profile.html', total_trips=total_trips, total_cities=total_cities)
