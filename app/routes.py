@@ -4,7 +4,7 @@ from app.models import User
 from app import db
 from datetime import datetime
 from datetime import datetime
-from app.models import User, Trip, Stop, Activity
+from app.models import User, Trip, Stop, Activity , ChecklistItem
 from app.models import Trip
 
 # Create a Blueprint named 'auth'
@@ -270,3 +270,54 @@ def profile():
     total_cities = sum(len(trip.stops) for trip in trips)
     
     return render_template('profile.html', total_trips=total_trips, total_cities=total_cities)
+@auth.route('/trip/<int:trip_id>/export')
+@login_required
+def export_trip(trip_id):
+    trip = Trip.query.get_or_404(trip_id)
+    if trip.user_id != current_user.id:
+        return redirect(url_for('auth.dashboard'))
+    
+    stops = Stop.query.filter_by(trip_id=trip.id).order_by(Stop.arrival_date).all()
+    total_cost = sum(
+        sum(act.cost for act in stop.activities)
+        for stop in stops
+    )
+    return render_template('export_trip.html', trip=trip, stops=stops, total_cost=total_cost)
+
+
+@auth.route('/trip/<int:trip_id>/checklist/add', methods=['POST'])
+@login_required
+def add_checklist_item(trip_id):
+    trip = Trip.query.get_or_404(trip_id)
+    if trip.user_id != current_user.id:
+        return redirect(url_for('auth.dashboard'))
+    
+    item_name = request.form.get('item_name')
+    if item_name:
+        new_item = ChecklistItem(trip_id=trip.id, item_name=item_name)
+        db.session.add(new_item)
+        db.session.commit()
+        flash(f'Added "{item_name}" to packing list.', 'success')
+        
+    return redirect(url_for('auth.trip_view', trip_id=trip.id))
+
+
+@auth.route('/checklist/<int:item_id>/toggle', methods=['POST'])
+@login_required
+def toggle_checklist_item(item_id):
+    item = ChecklistItem.query.get_or_404(item_id)
+    if item.trip.user_id == current_user.id:
+        item.is_packed = not item.is_packed
+        db.session.commit()
+    return redirect(url_for('auth.trip_view', trip_id=item.trip_id))
+
+
+@auth.route('/checklist/<int:item_id>/delete', methods=['POST'])
+@login_required
+def delete_checklist_item(item_id):
+    item = ChecklistItem.query.get_or_404(item_id)
+    trip_id = item.trip_id
+    if item.trip.user_id == current_user.id:
+        db.session.delete(item)
+        db.session.commit()
+    return redirect(url_for('auth.trip_view', trip_id=trip_id))

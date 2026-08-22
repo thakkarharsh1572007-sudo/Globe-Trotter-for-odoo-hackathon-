@@ -4,6 +4,7 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h2>{{ trip.title }}</h2>
     <div>
+        <a href="{{ url_for('auth.export_trip', trip_id=trip.id) }}" target="_blank" class="btn btn-secondary me-2">📄 Export / Print</a>
         <a href="{{ url_for('auth.share_trip', trip_id=trip.id) }}" target="_blank" class="btn btn-info me-2 text-white">Share Trip</a>
         <a href="{{ url_for('auth.trip_budget', trip_id=trip.id) }}" class="btn btn-success me-2">View Budget</a>
         <a href="{{ url_for('auth.dashboard') }}" class="btn btn-outline-secondary">&larr; Dashboard</a>
@@ -11,7 +12,7 @@
 </div>
 <p class="text-muted">{{ trip.start_date.strftime('%b %d, %Y') }} to {{ trip.end_date.strftime('%b %d, %Y') }}</p>
 
-<!-- 🟢 START OF INTERACTIVE MAP -->
+<!-- 🟢 INTERACTIVE MAP -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <div class="row mb-4">
     <div class="col-12">
@@ -26,23 +27,18 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
     document.addEventListener("DOMContentLoaded", function() {
-        // Initialize the map (defaults to a wide view)
         var map = L.map('tripMap').setView([22.0, 79.0], 5); 
-        
-        // Load the map tiles from OpenStreetMap
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 19,
             attribution: '© OpenStreetMap'
         }).addTo(map);
 
-        // Create a list of the cities from your Python backend
         var cities = [
             {% for stop in stops %}
                 "{{ stop.city_name }}",
             {% endfor %}
         ];
 
-        // Loop through each city, find its coordinates, and drop a pin
         cities.forEach(function(city) {
             fetch('https://nominatim.openstreetmap.org/search?format=json&q=' + city + '&countrycodes=in')
                 .then(response => response.json())
@@ -50,21 +46,35 @@
                     if(data.length > 0) {
                         var lat = data[0].lat;
                         var lon = data[0].lon;
-                        L.marker([lat, lon]).addTo(map)
-                            .bindPopup('<b>' + city + '</b>');
-                        
-                        // Slowly center the map on the most recently loaded city
-                        map.setView([lat, lon], 6); 
+                        L.marker([lat, lon]).addTo(map).bindPopup('<b>' + city + '</b>');
+                        map.setView([lat, lon], 6);
+
+                        // 🟢 LIVE WEATHER FETCH
+                        fetchWeather(lat, lon, city);
                     }
                 })
-                .catch(err => console.log("Error loading map point:", err));
+                .catch(err => console.log("Map search error:", err));
         });
+
+        function fetchWeather(lat, lon, cityName) {
+            fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`)
+                .then(res => res.json())
+                .then(wData => {
+                    if (wData.current_weather) {
+                        var temp = wData.current_weather.temperature;
+                        var weatherEl = document.getElementById('weather-' + cityName.replace(/\s+/g, '-'));
+                        if (weatherEl) {
+                            weatherEl.innerHTML = `☀️ ${temp}°C`;
+                        }
+                    }
+                })
+                .catch(err => console.log("Weather error:", err));
+        }
     });
 </script>
-<!-- 🟢 END OF INTERACTIVE MAP -->
 
 <div class="row">
-    <!-- Left Column: The Itinerary Timeline -->
+    <!-- Left Column: Timeline -->
     <div class="col-md-8">
         <h4 class="mb-3">Itinerary Timeline</h4>
         {% if stops %}
@@ -72,13 +82,15 @@
                 {% for stop in stops %}
                 <div class="list-group-item mb-3 shadow-sm rounded p-3">
                     <div class="d-flex w-100 justify-content-between align-items-center mb-2">
-                        <h5 class="mb-0 fw-bold">{{ stop.city_name }}</h5>
+                        <h5 class="mb-0 fw-bold">
+                            {{ stop.city_name }}
+                            <span id="weather-{{ stop.city_name|replace(' ', '-') }}" class="badge bg-warning text-dark ms-2 text-normal small">Loading weather...</span>
+                        </h5>
                         <span class="badge bg-light text-dark border">
                             {{ stop.arrival_date.strftime('%b %d') }} - {{ stop.departure_date.strftime('%b %d') }}
                         </span>
                     </div>
                     
-                    <!-- Display Activities with Delete Option -->
                     {% if stop.activities %}
                         <ul class="list-group list-group-flush my-2">
                             {% for activity in stop.activities %}
@@ -86,9 +98,7 @@
                                 <div>
                                     <strong>{{ activity.name }}</strong> - ${{ "%.2f"|format(activity.cost) }} on {{ activity.activity_date.strftime('%b %d') }}
                                 </div>
-                                
-                                <!-- Delete Activity Form -->
-                                <form method="POST" action="{{ url_for('auth.delete_activity', activity_id=activity.id) }}" class="d-inline" onsubmit="return confirm('Remove this activity?');">
+                                <form method="POST" action="{{ url_for('auth.delete_activity', activity_id=activity.id) }}" class="d-inline" onsubmit="return confirm('Remove activity?');">
                                     <button type="submit" class="btn btn-sm btn-link text-danger p-0 ms-2 text-decoration-none">&times; Delete</button>
                                 </form>
                             </li>
@@ -98,12 +108,9 @@
                         <p class="mb-1 text-muted small">No activities planned yet.</p>
                     {% endif %}
                     
-                    <!-- Action Buttons for Stop -->
                     <div class="mt-3 d-flex gap-2">
                         <a href="{{ url_for('auth.add_activity', stop_id=stop.id) }}" class="btn btn-sm btn-primary">+ Add Activity</a>
-                        
-                        <!-- Delete City Form -->
-                        <form method="POST" action="{{ url_for('auth.delete_stop', stop_id=stop.id) }}" onsubmit="return confirm('Remove {{ stop.city_name }} and all its activities?');">
+                        <form method="POST" action="{{ url_for('auth.delete_stop', stop_id=stop.id) }}" onsubmit="return confirm('Remove city?');">
                             <button type="submit" class="btn btn-sm btn-outline-danger">Delete City</button>
                         </form>
                     </div>
@@ -118,9 +125,10 @@
         {% endif %}
     </div>
 
-    <!-- Right Column: Add Stop Form -->
+    <!-- Right Column: Add Stop & Packing Checklist -->
     <div class="col-md-4">
-        <div class="card shadow-sm">
+        <!-- Add Stop Card -->
+        <div class="card shadow-sm mb-4">
             <div class="card-header bg-dark text-white">
                 <h5 class="card-title mb-0">Add a Stop</h5>
             </div>
@@ -140,6 +148,44 @@
                     </div>
                     <button type="submit" class="btn btn-success w-100">Add to Trip</button>
                 </form>
+            </div>
+        </div>
+
+        <!-- 🟢 PACKING CHECKLIST CARD -->
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h5 class="card-title mb-0">🧳 Packing Checklist</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('auth.add_checklist_item', trip_id=trip.id) }}" class="mb-3">
+                    <div class="input-group">
+                        <input type="text" name="item_name" class="form-control" placeholder="e.g., Tickets, Charger" required>
+                        <button type="submit" class="btn btn-outline-primary">+ Add</button>
+                    </div>
+                </form>
+
+                {% if trip.checklist_items %}
+                    <ul class="list-group list-group-flush">
+                        {% for item in trip.checklist_items %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                            <form method="POST" action="{{ url_for('auth.toggle_checklist_item', item_id=item.id) }}" class="m-0">
+                                <button type="submit" class="btn btn-sm text-start p-0 border-0 bg-transparent">
+                                    {% if item.is_packed %}
+                                        <span class="text-decoration-line-through text-muted">✅ {{ item.item_name }}</span>
+                                    {% else %}
+                                        <span>⬜ {{ item.item_name }}</span>
+                                    {% endif %}
+                                </button>
+                            </form>
+                            <form method="POST" action="{{ url_for('auth.delete_checklist_item', item_id=item.id) }}" class="m-0">
+                                <button type="submit" class="btn btn-sm btn-link text-danger p-0 border-0 text-decoration-none">&times;</button>
+                            </form>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p class="text-muted small mb-0">No packing items added yet.</p>
+                {% endif %}
             </div>
         </div>
     </div>

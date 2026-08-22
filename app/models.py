@@ -44,3 +44,10 @@ class Activity(db.Model):
     name = db.Column(db.String(150), nullable=False)
     cost = db.Column(db.Float, default=0.0)
     activity_date = db.Column(db.Date, nullable=False)
+class ChecklistItem(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    trip_id = db.Column(db.Integer, db.ForeignKey('trip.id'), nullable=False)
+    item_name = db.Column(db.String(150), nullable=False)
+    is_packed = db.Column(db.Boolean, default=False)
+
+    trip = db.relationship('Trip', backref=db.backref('checklist_items', lazy=True, cascade="all, delete-orphan"))
