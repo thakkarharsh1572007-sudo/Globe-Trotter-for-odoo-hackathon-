@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="text-center mb-5 mt-4">
+    <h1 class="display-4">{{ trip.title }}</h1>
+    <p class="lead text-muted">
+        {{ trip.start_date.strftime('%b %d, %Y') }} to {{ trip.end_date.strftime('%b %d, %Y') }}
+    </p>
+    <span class="badge bg-info text-dark">Shared via Globe Trotter</span>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        {% if stops %}
+            <div class="timeline">
+                {% for stop in stops %}
+                <div class="card mb-4 shadow-sm border-0">
+                    <div class="card-header bg-primary text-white d-flex justify-content-between">
+                        <h4 class="mb-0">{{ stop.city_name }}</h4>
+                        <span>{{ stop.arrival_date.strftime('%b %d') }} - {{ stop.departure_date.strftime('%b %d') }}</span>
+                    </div>
+                    <div class="card-body">
+                        {% if stop.activities %}
+                            <ul class="list-group list-group-flush">
+                                {% for activity in stop.activities %}
+                                <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                                    {{ activity.name }}
+                                    <span class="badge bg-secondary rounded-pill">${{ "%.2f"|format(activity.cost) }}</span>
+                                </li>
+                                {% endfor %}
+                            </ul>
+                        {% else %}
+                            <p class="text-muted mb-0">Exploring the city...</p>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="text-center p-5">
+                <h5 class="text-muted">The itinerary is still being planned!</h5>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

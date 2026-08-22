@@ -16,8 +16,13 @@
                     <h6 class="card-subtitle mb-2 text-muted">
                         {{ trip.start_date.strftime('%b %d, %Y') }} - {{ trip.end_date.strftime('%b %d, %Y') }}
                     </h6>
-                    <p class="card-text text-truncate">{{ trip.description }}</p>
-                    <a href="{{ url_for('auth.trip_view', trip_id=trip.id) }}" class="btn btn-primary btn-sm">View Itinerary</a>
+                        <p class="card-text text-truncate">{{ trip.description }}</p><div class="d-flex justify-content-between align-items-center mt-3 border-top pt-3">
+                        <a href="{{ url_for('auth.trip_view', trip_id=trip.id) }}" class="btn btn-primary btn-sm">View Itinerary</a>
+    
+                        <form method="POST" action="{{ url_for('auth.delete_trip', trip_id=trip.id) }}" onsubmit="return confirm('Are you sure you want to completely delete this trip? This cannot be undone.');">
+                            <button type="submit" class="btn btn-outline-danger btn-sm">Delete Trip</button>
+                        </form>
+                    </div>
                 </div>
             </div>
         </div>

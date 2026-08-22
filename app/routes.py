@@ -206,3 +206,36 @@ def trip_budget(trip_id):
         labels=labels, 
         values=values
     )
+@auth.route('/share/<int:trip_id>')
+def share_trip(trip_id):
+    # Fetch the trip, but we don't check if the user owns it because it's public
+    trip = Trip.query.get_or_404(trip_id)
+    stops = Stop.query.filter_by(trip_id=trip.id).order_by(Stop.arrival_date).all()
+    
+    return render_template('share_trip.html', trip=trip, stops=stops)
+@auth.route('/trip/<int:trip_id>/delete', methods=['POST'])
+@login_required
+def delete_trip(trip_id):
+    trip = Trip.query.get_or_404(trip_id)
+    
+    # Ensure the user actually owns this trip before deleting it!
+    if trip.user_id == current_user.id:
+        db.session.delete(trip)
+        db.session.commit()
+        flash('Trip deleted successfully.', 'info')
+        
+    return redirect(url_for('auth.dashboard'))
+
+@auth.route('/stop/<int:stop_id>/delete', methods=['POST'])
+@login_required
+def delete_stop(stop_id):
+    stop = Stop.query.get_or_404(stop_id)
+    trip_id = stop.trip_id
+    
+    # Ensure the user owns the trip this stop belongs to
+    if stop.trip.user_id == current_user.id:
+        db.session.delete(stop)
+        db.session.commit()
+        flash(f'{stop.city_name} removed from your itinerary.', 'info')
+        
+    return redirect(url_for('auth.trip_view', trip_id=trip_id))
