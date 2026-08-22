@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>{{ trip.title }}</h2>
+    <a href="{{ url_for('auth.dashboard') }}" class="btn btn-outline-secondary">&larr; Back to Dashboard</a>
+</div>
+<p class="text-muted">{{ trip.start_date.strftime('%b %d, %Y') }} to {{ trip.end_date.strftime('%b %d, %Y') }}</p>
+
+<div class="row">
+    <!-- Left Column: The Itinerary Timeline -->
+    <div class="col-md-8">
+        <h4 class="mb-3">Itinerary Timeline</h4>
+        {% if stops %}
+            <div class="list-group">
+                {% for stop in stops %}
+                <div class="list-group-item list-group-item-action mb-2 shadow-sm rounded">
+                    <div class="d-flex w-100 justify-content-between">
+                        <h5 class="mb-1">{{ stop.city_name }}</h5>
+                        <small class="text-muted">{{ stop.arrival_date.strftime('%b %d') }} - {{ stop.departure_date.strftime('%b %d') }}</small>
+                    </div>
+                    
+                    <!-- Display Activities -->
+                    {% if stop.activities %}
+                        <ul class="list-unstyled mt-2 ms-3 border-start border-2 ps-3 border-info">
+                            {% for activity in stop.activities %}
+                            <li><strong>{{ activity.name }}</strong> - ${{ "%.2f"|format(activity.cost) }} on {{ activity.activity_date.strftime('%b %d') }}</li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="mb-1 text-muted small">No activities planned yet.</p>
+                    {% endif %}
+                    
+                    <!-- The working Add Activity button -->
+                    <a href="{{ url_for('auth.add_activity', stop_id=stop.id) }}" class="btn btn-sm btn-primary mt-2">Add Activity</a>
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="alert alert-light border border-secondary border-dashed text-center p-5">
+                <h5 class="text-muted">No stops added yet!</h5>
+                <p>Use the form to start building your itinerary.</p>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Right Column: Add Stop Form -->
+    <div class="col-md-4">
+        <div class="card shadow-sm">
+            <div class="card-header bg-dark text-white">
+                <h5 class="card-title mb-0">Add a Stop</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('auth.add_stop', trip_id=trip.id) }}">
+                    <div class="mb-3">
+                        <label for="city_name" class="form-label">City Name</label>
+                        <input type="text" class="form-control" id="city_name" name="city_name" placeholder="e.g., Veraval" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="arrival_date" class="form-label">Arrival Date</label>
+                        <input type="date" class="form-control" id="arrival_date" name="arrival_date" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="departure_date" class="form-label">Departure Date</label>
+                        <input type="date" class="form-control" id="departure_date" name="departure_date" required>
+                    </div>
+                    <button type="submit" class="btn btn-success w-100">Add to Trip</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
