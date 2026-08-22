@@ -66,7 +66,7 @@
                             <tr>
                                 <td>{{ act.name }}</td>
                                 <td>{{ act.activity_date.strftime('%b %d, %Y') }}</td>
-                                <td class="text-end">${{ "%.2f"|format(act.cost) }}</td>
+                                <td class="text-end">₹{{ "%.2f"|format(act.cost) }}</td>
                             </tr>
                             {% endfor %}
                         </tbody>
