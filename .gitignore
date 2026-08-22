@@ -1,0 +1,23 @@
+# Python bytecode and cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# SQLite local instance database (Crucial so you don't commit personal user/trip data!)
+instance/
+*.db
+*.sqlite3
+
+# VS Code editor settings and workspace files
+.vscode/
+*.swp
+*.swo
+
+# Operating system generated files
+.DS_Store
+Thumbs.db
