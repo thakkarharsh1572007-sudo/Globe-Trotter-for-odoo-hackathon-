@@ -34,6 +34,25 @@
             </div>
         </div>
     </div>
+    <div class="card mb-4 bg-light border-0 shadow-sm">
+    <div class="card-body text-center py-4">
+        <h5 class="text-muted text-uppercase small">Total Estimated Trip Budget</h5>
+        <h1 class="display-4 fw-bold text-success mb-3">₹{{ "%.2f"|format(total_cost) }}</h1>
+        
+        {% if trip.participants %}
+            <hr class="w-50 mx-auto">
+            <h6 class="text-muted">Split among {{ trip.participants|length }} travelers:</h6>
+            <h3 class="fw-bold text-primary">₹{{ "%.2f"|format(total_cost / trip.participants|length) }} <span class="small text-muted font-normal">per person</span></h3>
+            <div class="mt-2">
+                {% for p in trip.participants %}
+                    <span class="badge bg-secondary me-1">{{ p.name }}</span>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="text-muted small mb-0">Add travelers in your trip view to calculate per-person splits!</p>
+        {% endif %}
+    </div>
+    </div>
 </div>
 
 <!-- Load Chart.js -->

@@ -1,13 +1,17 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-bs-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Globe Trotter</title>
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        /* Smooth transition for dark mode */
+        body { transition: background-color 0.3s ease, color 0.3s ease; }
+    </style>
 </head>
-<body class="bg-light">
+<body class="bg-body-tertiary">
     <!-- Navigation Bar -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4 shadow-sm">
         <div class="container">
@@ -16,7 +20,7 @@
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto">
+                <ul class="navbar-nav ms-auto align-items-center">
                     {% if current_user.is_authenticated %}
                         <li class="nav-item">
                             <a class="nav-link" href="{{ url_for('auth.dashboard') }}">My Trips</a>
@@ -35,6 +39,11 @@
                             <a class="nav-link" href="{{ url_for('auth.signup') }}">Sign Up</a>
                         </li>
                     {% endif %}
+                    
+                    <!-- 🟢 Dark Mode Toggle -->
+                    <li class="nav-item ms-3">
+                        <button class="btn btn-sm btn-outline-light" id="themeToggle" onclick="toggleTheme()">🌙 Dark</button>
+                    </li>
                 </ul>
             </div>
         </div>
@@ -42,10 +51,16 @@
 
     <!-- Flash Messages (Errors/Alerts) -->
     <div class="container mt-3">
-        {% with messages = get_flashed_messages() %}
+        {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
-                {% for message in messages %}
-                    <div class="alert alert-info alert-dismissible fade show" role="alert">
+                {% for category, message in messages %}
+                    <!-- We use Bootstrap's category logic to change alert colors -->
+                    {% set alert_class = 'alert-info' %}
+                    {% if category == 'success' %}{% set alert_class = 'alert-success' %}{% endif %}
+                    {% if category == 'warning' %}{% set alert_class = 'alert-warning' %}{% endif %}
+                    {% if category == 'error' %}{% set alert_class = 'alert-danger' %}{% endif %}
+                    
+                    <div class="alert {{ alert_class }} alert-dismissible fade show shadow-sm" role="alert">
                         {{ message }}
                         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                     </div>
@@ -55,11 +70,49 @@
     </div>
 
     <!-- Main Page Content is injected here -->
-    <div class="container mt-4">
+    <div class="container mt-4" style="min-height: 70vh;">
         {% block content %}{% endblock %}
     </div>
 
+    <!-- 🟢 Custom Hackathon Footer -->
+    <footer class="mt-5 py-4 border-top text-center text-muted small bg-body">
+        <div class="container">
+            <p class="mb-1 fw-bold">🌍 Globe Trotter &mdash; Odoo Hackathon Project</p>
+            <p class="mb-0">Designed and Developed by THAKKAR HARSH MUKESHBHAI</p>
+        </div>
+    </footer>
+
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- 🟢 Dark Mode Script -->
+    <script>
+        // Check local storage for theme preference on load
+        document.addEventListener('DOMContentLoaded', (event) => {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-bs-theme', savedTheme);
+            updateToggleButton(savedTheme);
+        });
+
+        function toggleTheme() {
+            const currentTheme = document.documentElement.getAttribute('data-bs-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            
+            document.documentElement.setAttribute('data-bs-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            updateToggleButton(newTheme);
+        }
+
+        function updateToggleButton(theme) {
+            const btn = document.getElementById('themeToggle');
+            if (theme === 'dark') {
+                btn.innerHTML = '☀️ Light';
+                btn.classList.replace('btn-outline-light', 'btn-outline-warning');
+            } else {
+                btn.innerHTML = '🌙 Dark';
+                btn.classList.replace('btn-outline-warning', 'btn-outline-light');
+            }
+        }
+    </script>
 </body>
 </html>

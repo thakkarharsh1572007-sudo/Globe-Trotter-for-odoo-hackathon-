@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-header bg-success text-white py-3">
+                <h3 class="mb-0">🤖 AI Travel Assistant: {{ stop.city_name }}</h3>
+                <p class="text-light mb-0 small">Curated highlights, food hotspots, and activities for your stop</p>
+            </div>
+            <div class="card-body p-4">
+                <div class="list-group">
+                    {% for rec in city_recs %}
+                    <div class="list-group-item list-group-item-action mb-3 shadow-sm rounded border">
+                        <div class="d-flex w-100 justify-content-between align-items-center">
+                            <h5 class="mb-1 fw-bold text-primary">{{ rec.title }}</h5>
+                            <span class="badge bg-secondary">{{ rec.type }}</span>
+                        </div>
+                        <p class="mb-1 text-muted">{{ rec.desc }}</p>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <div class="mt-4 text-center">
+                    <a href="{{ url_for('auth.trip_view', trip_id=stop.trip_id) }}" class="btn btn-outline-secondary">&larr; Back to Itinerary</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

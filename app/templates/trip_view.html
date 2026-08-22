@@ -48,12 +48,10 @@
                         var lon = data[0].lon;
                         L.marker([lat, lon]).addTo(map).bindPopup('<b>' + city + '</b>');
                         map.setView([lat, lon], 6);
-
-                        // 🟢 LIVE WEATHER FETCH
                         fetchWeather(lat, lon, city);
                     }
                 })
-                .catch(err => console.log("Map search error:", err));
+                .catch(err => console.log("Map error:", err));
         });
 
         function fetchWeather(lat, lon, cityName) {
@@ -96,7 +94,7 @@
                             {% for activity in stop.activities %}
                             <li class="list-group-item d-flex justify-content-between align-items-center px-2 py-1 bg-transparent">
                                 <div>
-                                    <strong>{{ activity.name }}</strong> - ${{ "%.2f"|format(activity.cost) }} on {{ activity.activity_date.strftime('%b %d') }}
+                                    <strong>{{ activity.name }}</strong> - ₹{{ "%.2f"|format(activity.cost) }} on {{ activity.activity_date.strftime('%b %d') }}
                                 </div>
                                 <form method="POST" action="{{ url_for('auth.delete_activity', activity_id=activity.id) }}" class="d-inline" onsubmit="return confirm('Remove activity?');">
                                     <button type="submit" class="btn btn-sm btn-link text-danger p-0 ms-2 text-decoration-none">&times; Delete</button>
@@ -108,9 +106,10 @@
                         <p class="mb-1 text-muted small">No activities planned yet.</p>
                     {% endif %}
                     
-                    <div class="mt-3 d-flex gap-2">
+                    <div class="mt-3 d-flex gap-2 flex-wrap">
                         <a href="{{ url_for('auth.add_activity', stop_id=stop.id) }}" class="btn btn-sm btn-primary">+ Add Activity</a>
-                        <form method="POST" action="{{ url_for('auth.delete_stop', stop_id=stop.id) }}" onsubmit="return confirm('Remove city?');">
+                        <a href="{{ url_for('auth.ai_recommendations', stop_id=stop.id) }}" class="btn btn-sm btn-success">🤖 AI Suggestions</a>
+                        <form method="POST" action="{{ url_for('auth.delete_stop', stop_id=stop.id) }}" class="ms-auto" onsubmit="return confirm('Remove city?');">
                             <button type="submit" class="btn btn-sm btn-outline-danger">Delete City</button>
                         </form>
                     </div>
@@ -125,7 +124,7 @@
         {% endif %}
     </div>
 
-    <!-- Right Column: Add Stop & Packing Checklist -->
+    <!-- Right Column: Add Stop, Split Calculator, Checklist, Notes -->
     <div class="col-md-4">
         <!-- Add Stop Card -->
         <div class="card shadow-sm mb-4">
@@ -151,8 +150,38 @@
             </div>
         </div>
 
-        <!-- 🟢 PACKING CHECKLIST CARD -->
-        <div class="card shadow-sm">
+        <!-- 🟢 EXPENSE SPLIT / TRAVELERS CARD -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-info text-dark">
+                <h5 class="card-title mb-0">👥 Travelers & Expense Split</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('auth.add_participant', trip_id=trip.id) }}" class="mb-3">
+                    <div class="input-group">
+                        <input type="text" name="name" class="form-control form-control-sm" placeholder="Traveler Name" required>
+                        <button type="submit" class="btn btn-sm btn-outline-info text-dark">+ Add</button>
+                    </div>
+                </form>
+
+                {% if trip.participants %}
+                    <ul class="list-group list-group-flush">
+                        {% for p in trip.participants %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center px-0 py-1">
+                            <span class="small">{{ p.name }}</span>
+                            <form method="POST" action="{{ url_for('auth.delete_participant', p_id=p.id) }}" class="m-0">
+                                <button type="submit" class="btn btn-sm btn-link text-danger p-0 border-0 text-decoration-none" style="font-size: 0.75rem;">&times;</button>
+                            </form>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p class="text-muted small mb-0">No other travelers added.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Packing Checklist Card -->
+        <div class="card shadow-sm mb-4">
             <div class="card-header bg-primary text-white">
                 <h5 class="card-title mb-0">🧳 Packing Checklist</h5>
             </div>
@@ -185,6 +214,96 @@
                     </ul>
                 {% else %}
                     <p class="text-muted small mb-0">No packing items added yet.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Travel Notes Locker -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-dark text-white">
+                <h5 class="card-title mb-0">📌 Travel Notes & Bookings</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('auth.add_trip_note', trip_id=trip.id) }}" class="mb-3">
+                    <div class="mb-2">
+                        <input type="text" name="title" class="form-control form-control-sm" placeholder="Title (e.g., Hotel Confirmation)" required>
+                    </div>
+                    <div class="mb-2">
+                        <select name="category" class="form-select form-select-sm">
+                            <option value="General">General Note</option>
+                            <option value="Hotel">Hotel Details</option>
+                            <option value="Train/Flight">Train / Ticket Info</option>
+                        </select>
+                    </div>
+                    <div class="mb-2">
+                        <textarea name="content" class="form-control form-control-sm" rows="2" placeholder="Note details..." required></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-sm btn-dark w-100">+ Save Note</button>
+                </form>
+
+                {% if trip.notes %}
+                    <div class="list-group list-group-flush border-top">
+                        {% for note in trip.notes %}
+                        <div class="list-group-item px-0 py-2">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <strong class="small">{{ note.title }}</strong>
+                                <span class="badge bg-secondary text-uppercase" style="font-size: 0.65rem;">{{ note.category }}</span>
+                            </div>
+                            <p class="small text-muted mb-1 mt-1">{{ note.content }}</p>
+                            <form method="POST" action="{{ url_for('auth.delete_trip_note', note_id=note.id) }}" class="m-0">
+                                <button type="submit" class="btn btn-sm btn-link text-danger p-0 border-0 text-decoration-none" style="font-size: 0.75rem;">Delete</button>
+                            </form>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 🟢 PHOTO MEMORY GALLERY SECTION -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">📸 Memory Gallery & Photos</h5>
+            </div>
+            <div class="card-body">
+                <!-- Add Photo Form -->
+                <form method="POST" action="{{ url_for('auth.add_trip_photo', trip_id=trip.id) }}" class="row g-3 mb-4">
+                    <div class="col-md-7">
+                        <input type="url" name="image_url" class="form-control" placeholder="Paste Image URL (e.g., https://...)" required>
+                    </div>
+                    <div class="col-md-3">
+                        <input type="text" name="caption" class="form-control" placeholder="Caption (e.g., Somnath Sunset)">
+                    </div>
+                    <div class="col-md-2">
+                        <button type="submit" class="btn btn-outline-secondary w-100">Upload Photo</button>
+                    </div>
+                </form>
+
+                <!-- Photo Grid -->
+                {% if trip.photos %}
+                    <div class="row">
+                        {% for photo in trip.photos %}
+                        <div class="col-md-3 mb-3">
+                            <div class="card h-100 shadow-sm">
+                                <img src="{{ photo.image_url }}" class="card-img-top" alt="Memory" style="height: 180px; object-fit: cover;" onerror="this.src='https://via.placeholder.com/300?text=Invalid+Image+URL'">
+                                <div class="card-body p-2 d-flex flex-column">
+                                    {% if photo.caption %}
+                                        <p class="card-text small mb-2">{{ photo.caption }}</p>
+                                    {% endif %}
+                                    <form method="POST" action="{{ url_for('auth.delete_trip_photo', photo_id=photo.id) }}" class="mt-auto text-end">
+                                        <button type="submit" class="btn btn-sm btn-link text-danger p-0 text-decoration-none">Delete</button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p class="text-muted text-center mb-0">No photos added to this trip gallery yet.</p>
                 {% endif %}
             </div>
         </div>

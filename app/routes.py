@@ -4,7 +4,7 @@ from app.models import User
 from app import db
 from datetime import datetime
 from datetime import datetime
-from app.models import User, Trip, Stop, Activity , ChecklistItem
+from app.models import User, Trip, Stop, Activity , ChecklistItem ,TripNote ,TripPhoto, TripParticipant
 from app.models import Trip
 
 # Create a Blueprint named 'auth'
@@ -321,3 +321,130 @@ def delete_checklist_item(item_id):
         db.session.delete(item)
         db.session.commit()
     return redirect(url_for('auth.trip_view', trip_id=trip_id))
+@auth.route('/trip/<int:trip_id>/notes/add', methods=['POST'])
+@login_required
+def add_trip_note(trip_id):
+    trip = Trip.query.get_or_404(trip_id)
+    if trip.user_id != current_user.id:
+        return redirect(url_for('auth.dashboard'))
+    
+    title = request.form.get('title')
+    content = request.form.get('content')
+    category = request.form.get('category', 'General')
+    
+    if title and content:
+        new_note = TripNote(trip_id=trip.id, title=title, content=content, category=category)
+        db.session.add(new_note)
+        db.session.commit()
+        flash('Note saved to locker!', 'success')
+        
+    return redirect(url_for('auth.trip_view', trip_id=trip.id))
+
+
+@auth.route('/note/<int:note_id>/delete', methods=['POST'])
+@login_required
+def delete_trip_note(note_id):
+    note = TripNote.query.get_or_404(note_id)
+    trip_id = note.trip_id
+    if note.trip.user_id == current_user.id:
+        db.session.delete(note)
+        db.session.commit()
+        flash('Note removed.', 'info')
+    return redirect(url_for('auth.trip_view', trip_id=trip_id))
+# ---------------------------------------------------------
+# FEATURE 1 & 3: Participants & Photo Gallery Routes
+# ---------------------------------------------------------
+@auth.route('/trip/<int:trip_id>/participant/add', methods=['POST'])
+@login_required
+def add_participant(trip_id):
+    trip = Trip.query.get_or_404(trip_id)
+    if trip.user_id != current_user.id:
+        return redirect(url_for('auth.dashboard'))
+    
+    name = request.form.get('name')
+    if name:
+        new_p = TripParticipant(trip_id=trip.id, name=name)
+        db.session.add(new_p)
+        db.session.commit()
+        flash(f'Added traveler {name}.', 'success')
+    return redirect(url_for('auth.trip_view', trip_id=trip.id))
+
+
+@auth.route('/participant/<int:p_id>/delete', methods=['POST'])
+@login_required
+def delete_participant(p_id):
+    p = TripParticipant.query.get_or_404(p_id)
+    trip_id = p.trip_id
+    if p.trip.user_id == current_user.id:
+        db.session.delete(p)
+        db.session.commit()
+    return redirect(url_for('auth.trip_view', trip_id=trip_id))
+
+
+@auth.route('/trip/<int:trip_id>/photo/add', methods=['POST'])
+@login_required
+def add_trip_photo(trip_id):
+    trip = Trip.query.get_or_404(trip_id)
+    if trip.user_id != current_user.id:
+        return redirect(url_for('auth.dashboard'))
+    
+    image_url = request.form.get('image_url')
+    caption = request.form.get('caption')
+    if image_url:
+        new_photo = TripPhoto(trip_id=trip.id, image_url=image_url, caption=caption)
+        db.session.add(new_photo)
+        db.session.commit()
+        flash('Memory photo added!', 'success')
+    return redirect(url_for('auth.trip_view', trip_id=trip.id))
+
+
+@auth.route('/photo/<int:photo_id>/delete', methods=['POST'])
+@login_required
+def delete_trip_photo(photo_id):
+    photo = TripPhoto.query.get_or_404(photo_id)
+    trip_id = photo.trip_id
+    if photo.trip.user_id == current_user.id:
+        db.session.delete(photo)
+        db.session.commit()
+    return redirect(url_for('auth.trip_view', trip_id=trip_id))
+
+
+# ---------------------------------------------------------
+# FEATURE 2: AI Smart Recommendations Engine (Mock/Heuristic)
+# ---------------------------------------------------------
+@auth.route('/stop/<int:stop_id>/ai-recommendations')
+@login_required
+def ai_recommendations(stop_id):
+    stop = Stop.query.get_or_404(stop_id)
+    if stop.trip.user_id != current_user.id:
+        return redirect(url_for('auth.dashboard'))
+    
+    city = stop.city_name.strip().title()
+    
+    # Custom smart recommendations database for local Indian travel hubs
+    recommendations = {
+        "Ahmedabad": [
+            {"title": "Sabarmati Ashram", "type": "Sightseeing", "desc": "Historic center of Mahatma Gandhi's non-violent freedom struggle."},
+            {"title": "Manek Chowk Night Street Food", "type": "Food", "desc": "Famous night market known for Pav Bhaji, Chocolate Sandwich, and Ghughra."},
+            {"title": "Adalaj Stepwell", "type": "Architecture", "desc": "Magnificent five-story subterranean architectural marvel built in 1499."}
+        ],
+        "Veraval": [
+            {"title": "Bhalka Tirth", "type": "Heritage", "desc": "Sacred holy site where Lord Krishna took his last earthly journey."},
+            {"title": "Veraval Fishing Harbor", "type": "Culture", "desc": "One of the largest fishing ports in Western India, vibrant boat docks."},
+            {"title": "Somnath Beach Walk", "type": "Nature", "desc": "Scenic coastline walk right beside the Arabian Sea."}
+        ],
+        "Somnath": [
+            {"title": "Somnath Temple Aarti", "type": "Spiritual", "desc": "First among the 12 Jyotirlinga shrines, renowned for light and sound show."},
+            {"title": "Prabhas Patan Museum", "type": "History", "desc": "Houses ancient temple fragments, sculptures, and old relics."},
+            {"title": "Geeta Mandir", "type": "Temple", "desc": "Features carvings of Shrimad Bhagavad Gita pillars across white marble."}
+        ]
+    }
+    
+    # Default fallback generator for any custom city typed by the user
+    city_recs = recommendations.get(city, [
+        {"title": f"Explore {city} City Center", "type": "Sightseeing", "desc": f"Walk around local markets and discover hidden gems in {city}."},
+        {"title": f"Local Cuisine Tasting", "type": "Food", "desc": f"Try signature local delicacies and traditional street food in {city}."},
+        {"title": f"{city} Heritage Landmark", "type": "Culture", "desc": f"Visit the primary historical monument or viewpoint in {city}."}
+    ])
+    
+    return render_template('ai_recommendations.html', stop=stop, city_recs=city_recs)

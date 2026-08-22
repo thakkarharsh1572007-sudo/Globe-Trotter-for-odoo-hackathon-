@@ -51,3 +51,26 @@ class ChecklistItem(db.Model):
     is_packed = db.Column(db.Boolean, default=False)
 
     trip = db.relationship('Trip', backref=db.backref('checklist_items', lazy=True, cascade="all, delete-orphan"))
+class TripNote(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    trip_id = db.Column(db.Integer, db.ForeignKey('trip.id'), nullable=False)
+    title = db.Column(db.String(150), nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    category = db.Column(db.String(50), default='General')  # e.g., Hotel, Train, Ticket, General
+
+    trip = db.relationship('Trip', backref=db.backref('notes', lazy=True, cascade="all, delete-orphan"))
+class TripPhoto(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    trip_id = db.Column(db.Integer, db.ForeignKey('trip.id'), nullable=False)
+    image_url = db.Column(db.String(300), nullable=False)
+    caption = db.Column(db.String(150))
+
+    trip = db.relationship('Trip', backref=db.backref('photos', lazy=True, cascade="all, delete-orphan"))
+
+
+class TripParticipant(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    trip_id = db.Column(db.Integer, db.ForeignKey('trip.id'), nullable=False)
+    name = db.Column(db.String(100), nullable=False)
+
+    trip = db.relationship('Trip', backref=db.backref('participants', lazy=True, cascade="all, delete-orphan"))

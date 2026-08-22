@@ -6,21 +6,30 @@
     <a href="{{ url_for('auth.create_trip') }}" class="btn btn-primary">+ Plan New Trip</a>
 </div>
 
-<div class="row">
+<!-- 🔍 LIVE SEARCH INPUT -->
+{% if trips %}
+<div class="mb-4">
+    <input type="text" id="tripSearchInput" class="form-control form-control-lg shadow-sm" placeholder="🔍 Search trips by title or description..." onkeyup="filterTrips()">
+</div>
+{% endif %}
+
+<div class="row" id="tripsGrid">
     {% if trips %}
         {% for trip in trips %}
-        <div class="col-md-4 mb-4">
+        <div class="col-md-4 mb-4 trip-card-wrapper">
             <div class="card shadow-sm h-100">
-                <div class="card-body">
-                    <h5 class="card-title">{{ trip.title }}</h5>
+                <div class="card-body d-flex flex-column">
+                    <h5 class="card-title trip-title">{{ trip.title }}</h5>
                     <h6 class="card-subtitle mb-2 text-muted">
                         {{ trip.start_date.strftime('%b %d, %Y') }} - {{ trip.end_date.strftime('%b %d, %Y') }}
                     </h6>
-                        <p class="card-text text-truncate">{{ trip.description }}</p><div class="d-flex justify-content-between align-items-center mt-3 border-top pt-3">
+                    <p class="card-text text-truncate trip-desc">{{ trip.description }}</p>
+                    
+                    <div class="mt-auto d-flex justify-content-between align-items-center pt-3 border-top">
                         <a href="{{ url_for('auth.trip_view', trip_id=trip.id) }}" class="btn btn-primary btn-sm">View Itinerary</a>
-    
-                        <form method="POST" action="{{ url_for('auth.delete_trip', trip_id=trip.id) }}" onsubmit="return confirm('Are you sure you want to completely delete this trip? This cannot be undone.');">
-                            <button type="submit" class="btn btn-outline-danger btn-sm">Delete Trip</button>
+                        
+                        <form method="POST" action="{{ url_for('auth.delete_trip', trip_id=trip.id) }}" onsubmit="return confirm('Delete this trip completely?');">
+                            <button type="submit" class="btn btn-outline-danger btn-sm">Delete</button>
                         </form>
                     </div>
                 </div>
@@ -34,4 +43,23 @@
         </div>
     {% endif %}
 </div>
+
+<!-- JavaScript Instant Filter -->
+<script>
+function filterTrips() {
+    let input = document.getElementById('tripSearchInput').value.toLowerCase();
+    let cards = document.getElementsByClassName('trip-card-wrapper');
+
+    for (let card of cards) {
+        let title = card.querySelector('.trip-title').innerText.toLowerCase();
+        let desc = card.querySelector('.trip-desc').innerText.toLowerCase();
+        
+        if (title.includes(input) || desc.includes(input)) {
+            card.style.display = "";
+        } else {
+            card.style.display = "none";
+        }
+    }
+}
+</script>
 {% endblock %}
